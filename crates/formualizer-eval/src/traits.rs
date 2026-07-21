@@ -541,8 +541,16 @@ impl<'a, 'b> ArgumentHandle<'a, 'b> {
                         .with_cancel_token(self.interp.context.cancellation_token()),
                 )
             }
-            // A scalar result is deliberately still an error: widening it to a
-            // 1x1 range here would change the meaning of existing formulas.
+            // An array-valued scalar is what a range comparison or elementwise
+            // operation produces (`B2:B5="Jakarta"`, `(B2:B5="x")*1`). It is an
+            // array, not a single value, so it belongs in a RangeView too.
+            CalcValue::Scalar(LiteralValue::Array(rows)) => Ok(RangeView::from_owned_rows(
+                rows,
+                self.interp.context.date_system(),
+            )
+            .with_cancel_token(self.interp.context.cancellation_token())),
+            // A genuine scalar stays an error: widening it to a 1x1 range here
+            // would change the meaning of existing formulas.
             _ => Err(ExcelError::new(ExcelErrorKind::Ref)
                 .with_message("Argument cannot be interpreted as a range.")),
         }
